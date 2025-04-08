@@ -1,0 +1,41 @@
+import pandas as pd
+import pymysql
+from sqlalchemy import create_engine
+engine = create_engine('mysql+pymysql://user10:1234@localhost/vediogame')
+conn = engine.connect()
+df=pd.read_sql_query("SELECT * FROM vediogame.vgsales", conn)
+df.head()
+Query=("""
+    SELECT CASE 
+        WHEN year < 2005 THEN 'pre-2005'
+        ELSE 'post-2005'
+    END AS period, 
+    AVG(global_sales)
+    FROM vediogame.vgsales
+    WHERE year IS NOT NULL
+    GROUP BY period;
+""")
+df_result = pd.read_sql_query(Query, conn)
+print(df_result)
+new_query = """
+    SELECT 
+        year,
+        global_sales,
+        CASE 
+            WHEN year < 2005 THEN 'pre-2005'
+            ELSE 'post-2005'
+        END AS period_label,
+        AVG(global_sales) OVER (PARTITION BY 
+            CASE 
+                WHEN year < 2005 THEN 'pre-2005'
+                ELSE 'post-2005'
+            END
+        ) AS avg_sales
+    FROM vgsales
+    WHERE year IS NOT NULL;
+"""
+
+
+df = pd.read_sql_query(new_query, conn)
+print(df)
+conn.close()
